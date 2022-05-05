@@ -1,113 +1,40 @@
 #include "wmq.h"
 
-#if defined _WIN32 && !defined __CYGWIN__
-    /*
-     * WINDOWS 32 BIT
-     */
-
-    #define MQ_LOAD(LIBRARY)                                                              \
-        HINSTANCE handle = LoadLibrary(LIBRARY);                                          \
-        if (!handle)                                                                      \
-        {                                                                                 \
-            rb_raise(wmq_exception,                                                       \
-                     "WMQ::QueueManager#connect(). Failed to load MQ Library:%s, rc=%ld", \
-                     LIBRARY,                                                             \
-                     GetLastError());                                                     \
-        }
-
-    #define MQ_RELEASE FreeLibrary((HINSTANCE)pqm->mq_lib_handle);
-
-    #define MQ_FUNCTION(FUNC, CAST) \
-        pqm->FUNC = (CAST)GetProcAddress(handle, #FUNC);                         \
-        if (!pqm->FUNC)                                                          \
-        {                                                                        \
-            rb_raise(wmq_exception, "Failed to find API "#FUNC" in MQ Library"); \
-        }
-
-    #define MQ_LIBRARY_SERVER "mqm"
-    #ifdef _WIN64
-        #define MQ_LIBRARY_CLIENT "mqic"
-    #else
-        #define MQ_LIBRARY_CLIENT "mqic32"
-    #endif
-#elif defined(SOLARIS) || defined(__SVR4) || defined(__linux__) || defined(LINUX)
-    /*
-     * SOLARIS, LINUX
-     */
-
-    #ifndef RTLD_LAZY
-        #define RTLD_LAZY 1
-    #endif
-    #ifndef RTLD_GLOBAL
-        #define RTLD_GLOBAL 0
-    #endif
-
-    #if defined(__linux__) || defined(LINUX)
-        #include <dlfcn.h>
-    #endif
-
-    #define MQ_LOAD(LIBRARY)                                                             \
-        void* handle = (void*)dlopen(LIBRARY, RTLD_LAZY|RTLD_GLOBAL);                    \
-        if (!handle)                                                                     \
-        {                                                                                \
-            rb_raise(wmq_exception,                                                      \
-                     "WMQ::QueueManager#connect(). Failed to load MQ Library:%s, rc=%s", \
-                     LIBRARY,                                                            \
-                     dlerror());                                                         \
-        }
-
-    #define MQ_RELEASE dlclose(pqm->mq_lib_handle);
-
-    #define MQ_FUNCTION(FUNC, CAST) \
-        pqm->FUNC = (CAST)dlsym(handle, #FUNC);                                  \
-        if (!pqm->FUNC)                                                          \
-        {                                                                        \
-            rb_raise(wmq_exception, "Failed to find API "#FUNC" in MQ Library"); \
-        }
-
-    #if defined(SOLARIS) || defined(__SVR4)
-        #define MQ_LIBRARY_SERVER "libmqm.so"
-        #define MQ_LIBRARY_CLIENT "libmqic.so"
-    #else
-        #define MQ_LIBRARY_SERVER "libmqm_r.so"
-        #define MQ_LIBRARY_CLIENT "libmqic_r.so"
-    #endif
-#elif defined(__hpux)
-    /*
-     * HP-UX
-     */
-
-    #define MQ_LOAD(LIBRARY)                                                             \
-        shl_t handle = shl_load(file, BIND_DEFERRED, 0);                                 \
-        if (!handle)                                                                     \
-        {                                                                                \
-            rb_raise(wmq_exception,                                                      \
-                     "WMQ::QueueManager#connect(). Failed to load MQ Library:%s, rc=%s", \
-                     LIBRARY,                                                            \
-                     strerror(errno));                                                   \
-        }
-
-    #define MQ_RELEASE shl_unload((shl_t)pqm->mq_lib_handle);
-
-    #define MQ_FUNCTION(FUNC, CAST)                                                  \
-        pqm->FUNC = NULL;                                                            \
-        shl_findsym(&handle,FUNC,TYPE_PROCEDURE,(void*)&(pqm->FUNC));                \
-        if(pqm->FUNC == NULL)                                                        \
-        {                                                                            \
-            shl_findsym(&handle,FUNC,TYPE_UNDEFINED,(void*)&(pqm->FUNC));            \
-            if(pqm->FUNC == NULL)                                                    \
-            {                                                                        \
-                rb_raise(wmq_exception, "Failed to find API "#FUNC" in MQ Library"); \
-            }                                                                        \
-        }
-
-    #define MQ_LIBRARY_SERVER "libmqm_r.sl"
-    #define MQ_LIBRARY_CLIENT "libmqic_r.sl"
+#ifndef RTLD_LAZY
+    #define RTLD_LAZY 1
 #endif
+#ifndef RTLD_GLOBAL
+    #define RTLD_GLOBAL 0
+#endif
+
+#if defined(__linux__) || defined(LINUX)
+    #include <dlfcn.h>
+#endif
+
+#define MQ_LOAD(LIBRARY)                                                             \
+    void* handle = (void*)dlopen(LIBRARY, RTLD_LAZY|RTLD_GLOBAL);                    \
+    if (!handle)                                                                     \
+    {                                                                                \
+        rb_raise(wmq_exception,                                                      \
+                    "WMQ::QueueManager#connect(). Failed to load MQ Library:%s, rc=%s", \
+                    LIBRARY,                                                            \
+                    dlerror());                                                         \
+    }
+
+#define MQ_RELEASE dlclose(pqm->mq_lib_handle);
+
+#define MQ_FUNCTION(FUNC, CAST) \
+    pqm->FUNC = (CAST)dlsym(handle, #FUNC);                                  \
+    if (!pqm->FUNC)                                                          \
+    {                                                                        \
+        rb_raise(wmq_exception, "Failed to find API "#FUNC" in MQ Library"); \
+    }
+
+#define MQ_LIBRARY_SERVER "libmqm_r.so"
+#define MQ_LIBRARY_CLIENT "libmqic_r.so"
 
 void Queue_manager_mq_load(PQUEUE_MANAGER pqm)
 {
-#if defined MQ_FUNCTION
     PMQCHAR library;
     if(pqm->is_client_conn)
     {
@@ -158,40 +85,6 @@ void Queue_manager_mq_load(PQUEUE_MANAGER pqm)
 
         if(pqm->trace_level>1) printf("WMQ::QueueManager#connect() MQ API's loaded successfully\n");
     }
-#else
-    /*
-     * For all the other platforms were we have to have two versions of Ruby WMQ
-     *  1: Linked with MQ Server Library
-     *  2: Linked with MQ Client Library
-     *
-     * As a result to use the client library:
-     *    require 'wmq/wmq_client'
-     */
-    pqm->MQCONNX = &MQCONNX;
-    pqm->MQCONN  = &MQCONN;
-    pqm->MQDISC  = &MQDISC;
-    pqm->MQBEGIN = &MQBEGIN;
-    pqm->MQBACK  = &MQBACK;
-    pqm->MQCMIT  = &MQCMIT;
-    pqm->MQPUT1  = &MQPUT1;
-
-    pqm->MQOPEN  = &MQOPEN;
-    pqm->MQCLOSE = &MQCLOSE;
-    pqm->MQGET   = &MQGET;
-    pqm->MQPUT   = &MQPUT;
-
-    pqm->MQINQ   = &MQINQ;
-    pqm->MQSET   = &MQSET;
-
-    pqm->mqCreateBag      = &mqCreateBag;
-    pqm->mqClearBag       = &mqClearBag;
-    pqm->mqExecute        = &mqExecute;
-    pqm->mqCountItems     = &mqCountItems;
-    pqm->mqInquireBag     = &mqInquireBag;
-    pqm->mqInquireItemInfo= &mqInquireItemInfo;
-    pqm->mqInquireInteger = &mqInquireInteger;
-    pqm->mqInquireString  = &mqInquireString;
-#endif
 }
 
 void Queue_manager_mq_free(PQUEUE_MANAGER pqm)

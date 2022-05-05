@@ -173,13 +173,6 @@ command directly and supply the location explicitly:
     ruby extconf.rb --with-mqm-include=/opt/mqm/inc --with-mqm-lib=/opt/mqm/lib
     make
 
-For platforms such as AIX and HP-UX it may be necessary to statically link in
-the WebSphere MQ client library when the auto-detection build above does not work.
-This build option is a last resort since it will only work using a client connection
-
-    ruby extconf_client.rb --with-mqm-include=/opt/mqm/inc --with-mqm-lib=/opt/mqm/lib
-    make
-
 ## Verifying the build
 
 ### Verifying a local WebSphere MQ Server installation

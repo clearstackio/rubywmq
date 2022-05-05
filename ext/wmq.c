@@ -65,10 +65,3 @@ void Init_wmq() {
     QueueManager_command_id_init();
     wmq_structs_id_init();
 }
-
-/*
- * For client build when dynamic loading is not being used E.g. Not Windows or Solaris ...
- */
-void Init_wmq_client() {
-    Init_wmq();
-}
