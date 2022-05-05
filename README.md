@@ -180,59 +180,6 @@ This build option is a last resort since it will only work using a client connec
     ruby extconf_client.rb --with-mqm-include=/opt/mqm/inc --with-mqm-lib=/opt/mqm/lib
     make
 
-### Installing on Windows
-
-#### Install Ruby and DevKit
-
-Download and install the Ruby installer from http://rubyinstaller.org/downloads/
-
-* Select "Add Ruby executables to your PATH" during the installation
-
-Download and install the Development Kit from the same site
-
-* Extract files into c:\Devkit
-
-Open a command prompt and run the commands below:
-
-    cd c:\DevKit
-    ruby dk.rb init
-
-If you experience any difficulties, see ﻿https://github.com/oneclick/rubyinstaller/wiki/Development-Kit
-
-#### Install WebSphereMQ
-
-Install the [WebSphere MQ Client and/or Server](﻿http://www.ibm.com/developerworks/downloads/ws/wmq/)
-
-* Develop on [WebSphere MQ Advanced](https://www.ibm.com/developerworks/community/blogs/messaging/entry/develop_on_websphere_mq_advanced_at_no_charge?lang=en#) at no charge!
-
-* Note: Install the Development Toolkit (SDK) and Client
-
-#### Install the RubyWMQ Gem
-
-    call "c:\DevKit\devkitvars.bat"
-    gem install rubywmq
-
-If WebSphere MQ is installed in the non-default location:
-
-    gem install rubywmq --platform=ruby -- '--with-mqm-include="C:\Program Files\IBM\WebSphere MQ\Tools\c\include"'
-
-#### Installation Errors
-
-Use this command to find the directory in which the gems are installed
-
-    gem which rubywmq
-
-The path to the rubywmq gem will be something like
-
-    C:\Ruby22\lib\ruby\gems\2.2.0\gems\rubywmq-2.0.3\ext
-
-When WebSphere MQ is not installed in the default location, change to the directory
-above and call the build command directly while supplying the location explicitly:
-
-    call "C:\DevKit\devkitvars.bat"
-    ruby extconf.rb --with-mqm-include="C:\Program Files\IBM\WebSphere MQ\Tools\c\include"
-    nmake
-
 ## Verifying the build
 
 ### Verifying a local WebSphere MQ Server installation
