@@ -1,3 +1,4 @@
+#include <dlfcn.h>
 #include "wmq.h"
 
 #ifndef RTLD_LAZY
@@ -5,10 +6,6 @@
 #endif
 #ifndef RTLD_GLOBAL
     #define RTLD_GLOBAL 0
-#endif
-
-#if defined(__linux__) || defined(LINUX)
-    #include <dlfcn.h>
 #endif
 
 #define MQ_LOAD(LIBRARY)                                                             \
@@ -30,20 +27,17 @@
         rb_raise(wmq_exception, "Failed to find API "#FUNC" in MQ Library"); \
     }
 
-#define MQ_LIBRARY_SERVER "libmqm_r.so"
-#define MQ_LIBRARY_CLIENT "libmqic_r.so"
-
 void Queue_manager_mq_load(PQUEUE_MANAGER pqm)
 {
     PMQCHAR library;
     if(pqm->is_client_conn)
     {
-        library = MQ_LIBRARY_CLIENT;
+        library = "libmqic_r" SOEXT;
         if(pqm->trace_level) printf("WMQ::QueueManager#connect() Loading MQ Client Library:%s\n", library);
     }
     else
     {
-        library = MQ_LIBRARY_SERVER;
+        library = "libmqm_r" SOEXT;
         if(pqm->trace_level) printf("WMQ::QueueManager#connect() Loading MQ Server Library:%s\n", library);
     }
 
