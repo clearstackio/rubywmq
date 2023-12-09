@@ -38,6 +38,7 @@ static ID ID_use_system_connection_data;
 
 /* MQSCO ID's */
 static ID ID_key_repository;
+static ID ID_certificate_label;
 
 /* Admin ID's */
 static ID ID_create_queue;
@@ -84,6 +85,7 @@ void QueueManager_id_init(void)
     /* MQSCO ID's */
     ID_key_repository       = rb_intern("key_repository");
     ID_crypto_hardware      = rb_intern("crypto_hardware");
+    ID_certificate_label    = rb_intern("certificate_label");
 
     /* Admin ID's */
     ID_create_queue         = rb_intern("create_queue");
@@ -153,8 +155,10 @@ VALUE QUEUE_MANAGER_alloc(VALUE klass)
     pqm->trace_level = 0;
     memcpy(&pqm->connect_options, &default_MQCNO, sizeof(MQCNO));
     memcpy(&pqm->security_parameters, &default_MQCSP, sizeof(MQCSP));
+    pqm->security_parameters.Version = MQCSP_CURRENT_VERSION;
   #ifdef MQCNO_VERSION_2
     memcpy(&pqm->client_conn, &default_MQCD, sizeof(MQCD));
+    pqm->client_conn.Version = MQCD_CURRENT_VERSION;
 
     /* Tell MQ to use Client Conn structures, etc. */
     pqm->connect_options.Version = MQCNO_CURRENT_VERSION;
@@ -163,6 +167,7 @@ VALUE QUEUE_MANAGER_alloc(VALUE klass)
   #endif
   #ifdef MQCNO_VERSION_4
     memcpy(&pqm->ssl_config_opts, &default_MQSCO, sizeof(MQSCO));
+    pqm->ssl_config_opts.Version = MQSCO_CURRENT_VERSION;
   #endif
   #ifdef MQCD_VERSION_6
     pqm->long_remote_user_id_ptr = 0;
@@ -372,11 +377,13 @@ VALUE QueueManager_initialize(VALUE self, VALUE hash)
         * Any SSL info in the client channel definition tables is also ignored
         */
         if (!NIL_P(rb_hash_aref(hash, ID2SYM(ID_key_repository))) ||
-            !NIL_P(rb_hash_aref(hash, ID2SYM(ID_crypto_hardware))))
+            !NIL_P(rb_hash_aref(hash, ID2SYM(ID_crypto_hardware))) ||
+            !NIL_P(rb_hash_aref(hash, ID2SYM(ID_certificate_label))))
         {
             /* Process MQSCO */
             WMQ_HASH2MQCHARS(hash,key_repository,              pqm->ssl_config_opts.KeyRepository)
             WMQ_HASH2MQCHARS(hash,crypto_hardware,             pqm->ssl_config_opts.CryptoHardware)
+            WMQ_HASH2MQCHARS(hash,certificate_label,           pqm->ssl_config_opts.CertificateLabel)
 
             pqm->connect_options.SSLConfigPtr = &pqm->ssl_config_opts;
         }
@@ -1132,6 +1139,7 @@ static VALUE QueueManager_singleton_connect_ensure(VALUE self)
  *   # SSL Options
  *   key_repository:      '/var/mqm/qmgrs/.../key',        # MQSCO.KeyRepository
  *   crypto_hardware:     'GSK_ACCELERATOR_NCIPHER_NF_ON', # MQSCO.CryptoHardware
+ *   certificate_label:   'myclientcert',                  # MQSCO.CertificateLabel
  *   )
  *
  * Optional Parameters
