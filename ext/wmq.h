@@ -91,6 +91,7 @@ extern VALUE wmq_exception;
     MQLONG   already_connected;       /* Already connected means don't disconnect */
     MQLONG   trace_level;             /* Trace level. 0==None, 1==Info 2==Debug ..*/
     MQCNO    connect_options;         /* MQCONNX Connection Options    */
+    MQCSP    security_parameters;
   #ifdef MQCNO_VERSION_2
     MQCD     client_conn;             /* Client Connection             */
   #endif

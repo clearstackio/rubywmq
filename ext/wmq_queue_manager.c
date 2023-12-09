@@ -108,6 +108,8 @@ void QUEUE_MANAGER_free(void* p)
         pqm->MQBACK(pqm->hcon, &pqm->comp_code, &pqm->reason_code);
         pqm->MQDISC(&pqm->hcon, &pqm->comp_code, &pqm->reason_code);
     }
+    free(pqm->security_parameters.CSPUserIdPtr);
+    free(pqm->security_parameters.CSPPasswordPtr);
   #ifdef MQCD_VERSION_6
     free(pqm->long_remote_user_id_ptr);
   #endif
@@ -133,6 +135,7 @@ void QUEUE_MANAGER_free(void* p)
 VALUE QUEUE_MANAGER_alloc(VALUE klass)
 {
     static MQCNO default_MQCNO = {MQCNO_DEFAULT};       /* MQCONNX Connection Options    */
+    static MQCNO default_MQCSP = {MQCSP_DEFAULT};
   #ifdef MQCNO_VERSION_2
     static MQCD  default_MQCD  = {MQCD_CLIENT_CONN_DEFAULT}; /* Client Connection             */
   #endif
@@ -149,12 +152,14 @@ VALUE QUEUE_MANAGER_alloc(VALUE klass)
     pqm->already_connected = 0;
     pqm->trace_level = 0;
     memcpy(&pqm->connect_options, &default_MQCNO, sizeof(MQCNO));
+    memcpy(&pqm->security_parameters, &default_MQCSP, sizeof(MQCSP));
   #ifdef MQCNO_VERSION_2
     memcpy(&pqm->client_conn, &default_MQCD, sizeof(MQCD));
 
     /* Tell MQ to use Client Conn structures, etc. */
     pqm->connect_options.Version = MQCNO_CURRENT_VERSION;
     pqm->connect_options.ClientConnPtr = &pqm->client_conn;
+    pqm->connect_options.SecurityParmsPtr = &pqm->security_parameters;
   #endif
   #ifdef MQCNO_VERSION_4
     memcpy(&pqm->ssl_config_opts, &default_MQSCO, sizeof(MQSCO));
@@ -262,6 +267,30 @@ VALUE QueueManager_initialize(VALUE self, VALUE hash)
         WMQ_HASH2MQCHARS(hash,receive_user_data,           pmqcd->ReceiveUserData)
         WMQ_HASH2MQCHARS(hash,user_identifier,             pmqcd->UserIdentifier)
         WMQ_HASH2MQCHARS(hash,password,                    pmqcd->Password)
+
+
+        /* MQCSP connection authentication with user ID and password */
+        VALUE user_identifier = rb_hash_aref(hash, ID2SYM(ID_user_identifier));
+        VALUE password = rb_hash_aref(hash, ID2SYM(ID_password));
+        if (!NIL_P(user_identifier))
+        {
+            pqm->security_parameters.AuthenticationType = MQCSP_AUTH_USER_ID_AND_PWD;
+
+            length = RSTRING_LEN(user_identifier);
+            char* buffer = ALLOC_N(char, length);
+            memcpy(buffer, RSTRING_PTR(user_identifier), length);
+            pqm->security_parameters.CSPUserIdPtr = buffer;
+            pqm->security_parameters.CSPUserIdLength = length;
+
+            if (!NIL_P(password))
+            {
+                length = RSTRING_LEN(password);
+                char* buffer = ALLOC_N(char, length);
+                memcpy(buffer, RSTRING_PTR(password), length);
+                pqm->security_parameters.CSPPasswordPtr = buffer;
+                pqm->security_parameters.CSPPasswordLength = length;
+            }
+        }
 
         /* Default channel name to system default */
         val = rb_hash_aref(hash, ID2SYM(ID_channel_name));
