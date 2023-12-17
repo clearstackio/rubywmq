@@ -18,7 +18,7 @@ counter            = 0
 WMQ::QueueManager.connect(config['qmgr_options']) do |qmgr|
   qmgr.open_queue({ mode: :output }.merge(config['output_queue'])) do |queue|
     Find.find(config['source_directory']) do |path|
-      unless FileTest.directory?(path)
+      unless Dir.exist?Z(path)
         printf("%5d: #{path}\n", counter = counter + 1)
         message.data = File.read(path)
         queue.put({ message: message }.merge(config['put_options']))
