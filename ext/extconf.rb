@@ -16,5 +16,8 @@ if have_header('cmqc.h')
   GenerateStructs.new(include_path+'/', generate_sources_path).generate
 end
 
+# Suppress errors from strict clang warnings on ARM64 macOS
+$CFLAGS << " -Wno-incompatible-function-pointer-types -Wno-int-conversion"
+
 # Generate Makefile
 create_makefile('wmq/wmq')
